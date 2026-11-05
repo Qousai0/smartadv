@@ -10,7 +10,7 @@ class Userscontroller extends Controller
     function createuser() {
         $user = User::create(
             [
-                'name' => 'qousai hassan',
+                'name' => 'qousai hassسan',
                 'email' => 'qousai@example.com',
                 'password' => bcrypt('password'),
 
