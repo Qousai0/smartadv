@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\AiChatController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -23,3 +24,5 @@ Route::get('/hello', function (Request $request) {
         'message' => 'Hello, World!',
        'requestt'=>$request,]);
   });
+
+  Route::post('/ai/ask', [AiChatController::class, 'ask']);

@@ -3,6 +3,7 @@ use App\Http\Middleware\IsAuthMiddlwaree;
 use App\Http\Controllers\FirstController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Userscontroller;
+use App\Http\Controllers\AiChatController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -40,3 +41,5 @@ Route::get('/req/{id}', [FirstController::class, 'requestfunction']);
 Route::get('/middleware/{id}', [FirstController::class, 'requestfunction'])->middleware(IsAuthMiddlwaree::class);
 //create USER in DB
 Route::get('/createuser', [Userscontroller::class, 'createuser']);
+
+Route::post('/ai/ask', [AiChatController::class, 'ask']);
