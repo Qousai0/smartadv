@@ -9,7 +9,7 @@
     <h2>alsjdi</h2>
     <h1>hello   {{ $name }}</h1>
     @foreach ($stud as $student)
-        <p>{{ $student }}</p>
+        <p>{{ $student }}</p>laksjdlkasjdlkasjd
     @endforeach
 </body>
 </html>
