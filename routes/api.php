@@ -32,3 +32,12 @@ Route::get('/hello', function (Request $request) {
 });
 
   Route::post('/ai/ask', [AiChatController::class, 'ask']);
+
+  Route::get('/test-iconv', function () {
+    return response()->json([
+        'iconv_loaded' => extension_loaded('iconv'),
+        'iconv_impl' => defined('ICONV_IMPL') ? ICONV_IMPL : null,
+        'cp1252' => @iconv('CP1252', 'UTF-8//TRANSLIT//IGNORE', 'Hello'),
+        'windows1252' => @iconv('Windows-1252', 'UTF-8//TRANSLIT//IGNORE', 'Hello'),
+    ]);
+});
