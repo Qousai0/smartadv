@@ -33,7 +33,7 @@ Route::get('/hello', function (Request $request) {
 
   Route::post('/ai/ask', [AiChatController::class, 'ask']);
 
-  Route::get('/test-iconv', function () {
+  Route::get('/test-iconvv', function () {
     return response()->json([
         'iconv_loaded' => extension_loaded('iconv'),
         'iconv_impl' => defined('ICONV_IMPL') ? ICONV_IMPL : null,
