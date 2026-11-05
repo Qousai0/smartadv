@@ -24,5 +24,11 @@ Route::get('/hello', function (Request $request) {
         'message' => 'Hello, World!',
        'requestt'=>$request,]);
   });
+  Route::get('/test', function () {
+    return response()->json([
+        'success' => true,
+        'message' => 'Smart Advisor API is working!'
+    ]);
+});
 
   Route::post('/ai/ask', [AiChatController::class, 'ask']);
