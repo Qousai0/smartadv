@@ -731,7 +731,7 @@ private function decodeContentByEncodingElement(string $text, Element $encoding)
 }
 
     /**
-     * Convert PDF encoding name to iconv-known encoding name. سسsad
+     * Convert PDF encoding name to iconv-known encoding name. سسsadمممم
      */
     private function getIconvEncodingNameOrNullByPdfEncodingName(string $pdfEncodingName): ?string
     {
