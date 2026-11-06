@@ -1,7 +1,6 @@
 <?php
 namespace App\Http\Controllers;
 
-
 use Smalot\PdfParser\Parser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -23,11 +22,7 @@ class AiChatController extends Controller
             ], 500);
         }
 
-        // المستند الذي يختاره Laravel تلقائياً
-        $documentPath = public_path(
-            'assets/t.pdf'
-        );
-
+        $documentPath = public_path('assets/t.pdf');
         $subject = 'Database Systems';
 
         if (!file_exists($documentPath)) {
@@ -37,10 +32,8 @@ class AiChatController extends Controller
         }
 
         try {
-
-            // قراءة المستند من Laravel
+            // قراءة ملف PDF
             $parser = new Parser();
-
             $pdf = $parser->parseFile($documentPath);
 
             $documentText = $pdf->getText();
@@ -57,7 +50,7 @@ class AiChatController extends Controller
                 30000
             );
 
-            // إرسال المستند والسؤال إلى AI
+            // إرسال السؤال والمستند إلى OpenRouter
             $model = 'openrouter/free';
 
             $response = Http::connectTimeout(10)
@@ -67,7 +60,6 @@ class AiChatController extends Controller
                     'https://openrouter.ai/api/v1/chat/completions',
                     [
                         'model' => $model,
-
                         'messages' => [
                             [
                                 'role' => 'system',
@@ -93,7 +85,6 @@ class AiChatController extends Controller
                 );
 
             if (!$response->successful()) {
-
                 Log::error('OpenRouter Error', [
                     'status' => $response->status(),
                     'body' => $response->json()
@@ -117,19 +108,20 @@ class AiChatController extends Controller
                 'model' => $response->json('model') ?? $model
             ]);
 
-        }} catch (\Throwable $e) {
+        } catch (\Throwable $e) {
 
-    Log::error('AI PDF ERROR', [
-        'message' => $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine(),
-        'trace' => $e->getTraceAsString(),
-    ]);
+            // تسجيل تفاصيل الخطأ كاملة لمعرفة مصدر مشكلة PDF
+            Log::error('AI PDF ERROR', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
-    return response()->json([
-        'error' => 'حدث خطأ أثناء معالجة السؤال',
-        'details' => $e->getMessage(),
-    ], 500);
-}
+            return response()->json([
+                'error' => 'حدث خطأ أثناء معالجة السؤال',
+                'details' => $e->getMessage()
+            ], 500);
+        }
     }
 }
