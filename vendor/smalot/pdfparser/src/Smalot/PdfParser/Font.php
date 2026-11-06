@@ -701,41 +701,45 @@ class Font extends PDFObject
     /**
      * Decode content when $encoding (given by $this->get('Encoding')) is instance of Element.
      */
-    private function decodeContentByEncodingElement(string $text, Element $encoding): ?string
-    {
-        $pdfEncodingName = $encoding->getContent();
+private function decodeContentByEncodingElement(string $text, Element $encoding): ?string
+{
+    $pdfEncodingName = $encoding->getContent();
 
-        // mb_convert_encoding does not support MacRoman/macintosh,
-        // so we use iconv() here
-        $iconvEncodingName = $this->getIconvEncodingNameOrNullByPdfEncodingName($pdfEncodingName);
-
-      if (!$iconvEncodingName) {
-    return null;
-}
-
-try {
-    $result = @iconv($iconvEncodingName, 'UTF-8//TRANSLIT//IGNORE', $text);
-
-    if ($result !== false) {
-        return $result;
+    // WinAnsi: استخدم mb_convert_encoding مباشرة لتجنب مشكلة iconv على Wasmer
+    if ('WinAnsiEncoding' === $pdfEncodingName) {
+        return mb_convert_encoding($text, 'UTF-8', 'Windows-1252');
     }
-} catch (\Throwable $e) {
-    // Use mb_convert_encoding as fallback.
-}
 
-return mb_convert_encoding($text, 'UTF-8', 'Windows-1252');
+    $iconvEncodingName = $this->getIconvEncodingNameOrNullByPdfEncodingName($pdfEncodingName);
+
+    if (!$iconvEncodingName) {
+        return null;
     }
+
+    try {
+        // لا نستخدم TRANSLIT أو IGNORE
+        $result = @iconv($iconvEncodingName, 'UTF-8', $text);
+
+        if (false !== $result) {
+            return $result;
+        }
+    } catch (\Throwable $e) {
+        // Fallback below
+    }
+
+    return mb_convert_encoding($text, 'UTF-8', 'Windows-1252');
+}
 
     /**
      * Convert PDF encoding name to iconv-known encoding name.
      */
     private function getIconvEncodingNameOrNullByPdfEncodingName(string $pdfEncodingName): ?string
     {
-        $pdfToIconvEncodingNameMap = [
-            'StandardEncoding' => 'ISO-8859-1',
-            'MacRomanEncoding' => 'MACINTOSH',
-            'WinAnsiEncoding' => 'CP1252',
-        ];
+    $pdfToIconvEncodingNameMap = [
+    'StandardEncoding' => 'ISO-8859-1',
+    'MacRomanEncoding' => 'MACINTOSH',
+    'WinAnsiEncoding' => 'Windows-1252',
+];
 
         return \array_key_exists($pdfEncodingName, $pdfToIconvEncodingNameMap)
             ? $pdfToIconvEncodingNameMap[$pdfEncodingName]
