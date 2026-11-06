@@ -1,7 +1,9 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Smalot\PdfParser\Parser;
+use Smalot\PdfParser\Font;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -31,26 +33,61 @@ class AiChatController extends Controller
             ], 404);
         }
 
+        // معلومات تشخيص المكتبة على السيرفر
+        $diagnostics = null;
+
         try {
+
+            // فحص نسخة Font.php المستخدمة فعلياً
+            $fontReflection = new \ReflectionClass(Font::class);
+
+            $fontFile = $fontReflection->getFileName();
+
+            $fontSource = file_get_contents($fontFile);
+
+            $diagnostics = [
+                'php_version' => PHP_VERSION,
+
+                'font_file' => $fontFile,
+
+                'font_hash' => hash_file(
+                    'sha256',
+                    $fontFile
+                ),
+
+                'old_iconv_exists' => str_contains(
+                    $fontSource,
+                    'UTF-8//TRANSLIT//IGNORE'
+                ),
+
+                'new_iconv_exists' => str_contains(
+                    $fontSource,
+                    "iconv(\$iconvEncodingName, 'UTF-8', \$text)"
+                ),
+            ];
+
             // قراءة ملف PDF
             $parser = new Parser();
+
             $pdf = $parser->parseFile($documentPath);
 
             $documentText = $pdf->getText();
 
             if (trim($documentText) === '') {
                 return response()->json([
-                    'error' => 'المستند لا يحتوي على نص قابل للاستخراج'
+                    'error' => 'المستند لا يحتوي على نص قابل للاستخراج',
+                    'debug' => $diagnostics
                 ], 422);
             }
 
+            // تحديد طول النص
             $documentText = mb_substr(
                 $documentText,
                 0,
                 30000
             );
 
-            // إرسال السؤال والمستند إلى OpenRouter
+            // إرسال السؤال إلى OpenRouter
             $model = 'openrouter/free';
 
             $response = Http::connectTimeout(10)
@@ -60,6 +97,7 @@ class AiChatController extends Controller
                     'https://openrouter.ai/api/v1/chat/completions',
                     [
                         'model' => $model,
+
                         'messages' => [
                             [
                                 'role' => 'system',
@@ -69,6 +107,7 @@ class AiChatController extends Controller
 المادة: {$subject}
 
 هذا محتوى المحاضرة:
+
 {$documentText}
 
 أجب عن سؤال الطالب اعتماداً على المحاضرة.
@@ -76,6 +115,7 @@ class AiChatController extends Controller
 إذا لم تجد المعلومة في المحاضرة أخبر الطالب بذلك.
 "
                             ],
+
                             [
                                 'role' => 'user',
                                 'content' => $request->question
@@ -85,6 +125,7 @@ class AiChatController extends Controller
                 );
 
             if (!$response->successful()) {
+
                 Log::error('OpenRouter Error', [
                     'status' => $response->status(),
                     'body' => $response->json()
@@ -110,17 +151,27 @@ class AiChatController extends Controller
 
         } catch (\Throwable $e) {
 
-            // تسجيل تفاصيل الخطأ كاملة لمعرفة مصدر مشكلة PDF
+            // إظهار مصدر الخطأ مباشرة في Postman
             Log::error('AI PDF ERROR', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
+                'runtime' => $diagnostics
             ]);
 
             return response()->json([
                 'error' => 'حدث خطأ أثناء معالجة السؤال',
-                'details' => $e->getMessage()
+
+                'details' => $e->getMessage(),
+
+                'debug' => [
+                    'exception_file' => $e->getFile(),
+                    'exception_line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                    'runtime' => $diagnostics
+                ]
+
             ], 500);
         }
     }
