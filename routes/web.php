@@ -6,7 +6,7 @@ use App\Http\Controllers\Userscontroller;
 use App\Http\Controllers\AiChatController;
 /*
 |--------------------------------------------------------------------------
-| Web Routes
+| Web Routesس
 |---------------------------------------------------------------------sada-----
 biuld command 
 |composer run-script post-update-cmd && npm run build
