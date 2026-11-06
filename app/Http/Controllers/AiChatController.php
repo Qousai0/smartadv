@@ -117,16 +117,19 @@ class AiChatController extends Controller
                 'model' => $response->json('model') ?? $model
             ]);
 
-        } catch (\Throwable $e) {
+        }} catch (\Throwable $e) {
 
-            Log::error('AI Error', [
-                'message' => $e->getMessage()
-            ]);
+    Log::error('AI PDF ERROR', [
+        'message' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'trace' => $e->getTraceAsString(),
+    ]);
 
-            return response()->json([
-                'error' => 'حدث خطأ أثناء معالجة السؤال',
-                'details' => $e->getMessage()
-            ], 500);
-        }
+    return response()->json([
+        'error' => 'حدث خطأ أثناء معالجة السؤال',
+        'details' => $e->getMessage(),
+    ], 500);
+}
     }
 }
