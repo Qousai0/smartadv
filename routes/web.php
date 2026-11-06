@@ -8,7 +8,12 @@ use App\Http\Controllers\AiChatController;
 |--------------------------------------------------------------------------
 | Web Routes
 |---------------------------------------------------------------------sada-----
-|
+biuld command 
+|composer run-script post-update-cmd && npm run build
+
+install command 
+composer install --optimize-autoloader --ignore-platform-reqs --no-scripts --no-interaction && npm install
+
 | Here is where you can register web routes for your application. These
 | routes are loaded by the RouteServiceProvider within a group which
 | contains the "web" middleware group. Now create something great!
