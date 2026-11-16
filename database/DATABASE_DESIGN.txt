@@ -1,0 +1,456 @@
+SMART ADVISOR - DATABASE DESIGN
+
+الغرض من الملف
+
+هذا الملف هو مرجع تصميم قاعدة بيانات مشروع Smart Advisor. يوضح الجداول،
+وظيفة كل جدول، الحقول، أنواع البيانات، المفاتيح الأساسية والخارجية،
+والعلاقات بين الجداول.
+
+ملاحظات مهمة قبل التنفيذ
+
+1.  المشروع يستخدم Laravel 9 و MySQL.
+2.  قاعدة البيانات الحالية على Aiven تحتوي بالفعل على:
+    -   users
+    -   roles
+    -   specializations
+    -   password_resets
+    -   failed_jobs
+    -   personal_access_tokens
+3.  جدول users مبني على Laravel، واسمه يحتوي على الحقل name وليس
+    full_name. لذلك سنستخدم name ولن نغيّر اسم العمود الحالي.
+4.  تمت إضافة الأعمدة التالية إلى users:
+    -   role_id
+    -   specialization_id
+    -   academic_year
+5.  لا تستخدم migrate:fresh أو migrate:refresh على قاعدة البيانات
+    الحالية؛ لأن ذلك قد يحذف بيانات موجودة. نضيف كل تغيير عن طريق
+    Migration جديدة.
+6.  يجب أن يحتوي كل جدول جديد على Primary Key بسبب إعدادات Aiven.
+7.  أنواع ENUM المذكورة هنا هي قيم مقترحة. يمكن تنفيذها كـ string مع
+    validation في Laravel إذا أردنا مرونة أكبر.
+8.  كل جدول أدناه من جداول وظائف المشروع، ولا يشمل جداول Laravel
+    الافتراضية.
+9.  التصميم الأصلي يحتوي فعلياً على 23 جدولاً وظيفياً، وليس 22 كما ورد في
+    ملخص الرسالة القديمة.
+10. أضفنا في نهاية التصميم جدول course_materials كتوسعة موصى بها؛ لأن
+    المشروع يحتاج حفظ ملفات المواد المرفوعة (PDF والصور وغيرها) حتى
+    يستطيع المساعد الذكي الرجوع إليها. هذا الجدول لم يكن موجوداً في
+    التصميم القديم.
+
+============================================================ القسم
+الأول: المستخدمون والصلاحيات
+============================================================
+
+1) users - المستخدمون
+
+الوظيفة: تخزين حسابات الطلاب والمسؤولين. هذا الجدول موجود حالياً في قاعدة
+البيانات.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - name VARCHAR(255),
+NOT NULL - email VARCHAR(255), UNIQUE, NOT NULL - email_verified_at
+TIMESTAMP, NULL - password VARCHAR(255), NOT NULL - role_id BIGINT
+UNSIGNED, FK -> roles.id, NULL - specialization_id BIGINT UNSIGNED, FK
+-> specializations.id, NULL - academic_year TINYINT UNSIGNED, NULL -
+remember_token VARCHAR(100), NULL - created_at TIMESTAMP, NULL -
+updated_at TIMESTAMP, NULL
+
+ملاحظة: الحقول الأصلية في Laravel مثل id وname وemail وpassword
+وtimestamps موجودة مسبقاً. لا تنشئ جدول users من جديد.
+
+2) roles - الأدوار
+
+الوظيفة: تحديد نوع المستخدم وصلاحياته العامة.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - name VARCHAR(100),
+UNIQUE, NOT NULL - created_at TIMESTAMP, NULL - updated_at TIMESTAMP,
+NULL
+
+أمثلة name: student admin content_manager
+
+العلاقة: Role واحد يمكن أن يرتبط بعدة Users (One-to-Many).
+
+3) specializations - التخصصات
+
+الوظيفة: تخزين التخصصات الجامعية مثل هندسة البرمجيات.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - name VARCHAR(255),
+NOT NULL - description TEXT, NULL - created_at TIMESTAMP, NULL -
+updated_at TIMESTAMP, NULL
+
+العلاقات: - التخصص الواحد له عدة Users. - التخصص الواحد له عدة
+Courses. - التخصص الواحد له عدة Study Plans.
+
+============================================================ القسم
+الثاني: المواد والخطط الدراسية
+============================================================
+
+4) courses - المواد الدراسية
+
+الوظيفة: تخزين المواد التي تطرحها التخصصات.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - course_code
+VARCHAR(100), UNIQUE, NOT NULL - name VARCHAR(255), NOT NULL -
+description TEXT, NULL - credit_hours TINYINT UNSIGNED, NOT NULL -
+specialization_id BIGINT UNSIGNED, FK -> specializations.id - syllabus
+LONGTEXT, NULL - created_at TIMESTAMP, NULL - updated_at TIMESTAMP, NULL
+
+العلاقات: - كل Course تتبع تخصصاً واحداً. - المادة يمكن أن تظهر في عدة
+Study Plans. - المادة يمكن أن يكون لها متطلبات سابقة. - المادة يمكن أن
+ترتبط بمواد دراسية مرفوعة واختبارات ومشاريع.
+
+5) study_plans - الخطط الدراسية
+
+الوظيفة: تمثيل الخطة الدراسية المعتمدة لتخصص معين.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - name VARCHAR(255),
+NOT NULL - specialization_id BIGINT UNSIGNED, FK -> specializations.id -
+version VARCHAR(50), NULL - total_credit_hours SMALLINT UNSIGNED, NOT
+NULL - created_at TIMESTAMP, NULL - updated_at TIMESTAMP, NULL
+
+العلاقة: التخصص الواحد يمكن أن يمتلك عدة خطط دراسية.
+
+6) study_plan_courses - مواد الخطة الدراسية
+
+الوظيفة: جدول وسيط يربط الخطة بالمواد، ويحدد الفصل المقترح لكل مادة.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - study_plan_id BIGINT
+UNSIGNED, FK -> study_plans.id - course_id BIGINT UNSIGNED, FK ->
+courses.id - semester_number TINYINT UNSIGNED, NOT NULL - is_elective
+BOOLEAN, DEFAULT FALSE - created_at TIMESTAMP, NULL - updated_at
+TIMESTAMP, NULL
+
+قيد مهم: UNIQUE(study_plan_id, course_id) لمنع تكرار المادة نفسها في
+الخطة نفسها.
+
+7) course_prerequisites - المتطلبات السابقة للمواد
+
+الوظيفة: ربط المادة بالمواد التي يجب اجتيازها قبل تسجيلها.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - course_id BIGINT
+UNSIGNED, FK -> courses.id - prerequisite_course_id BIGINT UNSIGNED, FK
+-> courses.id - created_at TIMESTAMP, NULL - updated_at TIMESTAMP, NULL
+
+قيد مهم: UNIQUE(course_id, prerequisite_course_id)
+
+ملاحظة: يمكن استخدام مفتاح أساسي مركب من course_id
+وprerequisite_course_id بدلاً من id. أضفنا id هنا لتوحيد أسلوب الجداول
+وتسهيل التعامل معها.
+
+8) student_courses - مواد الطالب وتقدمه
+
+الوظيفة: تخزين المواد التي سجلها الطالب وحالتها وعلامته.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - student_id BIGINT
+UNSIGNED, FK -> users.id - course_id BIGINT UNSIGNED, FK -> courses.id -
+status VARCHAR(30), NOT NULL - grade DECIMAL(5,2), NULL - completed_at
+DATE, NULL - created_at TIMESTAMP, NULL - updated_at TIMESTAMP, NULL
+
+القيم المقترحة لـ status: planned in_progress completed failed
+
+قيد مقترح: UNIQUE(student_id, course_id) إذا كان مسموحاً بسجل واحد لكل
+مادة. إذا أردنا دعم إعادة المادة وتسجيل محاولات متعددة، نحتاج لاحقاً
+لتصميم جدول منفصل لمحاولات دراسة المادة.
+
+============================================================ القسم
+الثالث: ملفات المواد والمساعد الذكي
+============================================================
+
+9) course_materials - ملفات ومصادر المواد (إضافة موصى بها)
+
+الوظيفة: حفظ بيانات الملفات التي يرفعها المسؤول أو مدير المحتوى لكل
+مادة، مثل PDF وDOCX والصور. الملف نفسه يُحفظ في Storage، وليس كـ BLOB
+داخل قاعدة البيانات. نخزن هنا مساره ومعلوماته.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - course_id BIGINT
+UNSIGNED, FK -> courses.id - uploaded_by BIGINT UNSIGNED, FK ->
+users.id, NULL - title VARCHAR(255), NOT NULL - file_path VARCHAR(500),
+NOT NULL - file_type VARCHAR(50), NULL - mime_type VARCHAR(100), NULL -
+file_size BIGINT UNSIGNED, NULL - extracted_text LONGTEXT, NULL -
+created_at TIMESTAMP, NULL - updated_at TIMESTAMP, NULL
+
+ملاحظات: - file_path هو مكان الملف في Laravel Storage. - extracted_text
+يمكن أن يحتوي النص المستخرج من PDF أو DOCX أو الصورة بعد OCR، ليسهل
+إرساله إلى خدمة الذكاء الاصطناعي. - لا تخزن محتوى الملف الثنائي داخل هذا
+الجدول. - يمكن جعل uploaded_by فارغاً إذا أضيف الملف من عملية آلية.
+
+10) ai_conversations - محادثات الذكاء الاصطناعي
+
+الوظيفة: كل سجل يمثل محادثة واحدة بين المستخدم والمساعد الذكي.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - user_id BIGINT
+UNSIGNED, FK -> users.id - title VARCHAR(255), NULL - created_at
+TIMESTAMP, NULL - updated_at TIMESTAMP, NULL
+
+العلاقة: المستخدم الواحد يمكن أن يمتلك عدة محادثات.
+
+11) ai_messages - رسائل المحادثة
+
+الوظيفة: تخزين رسائل المستخدم وردود المساعد داخل المحادثة.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - conversation_id
+BIGINT UNSIGNED, FK -> ai_conversations.id - sender_type VARCHAR(20),
+NOT NULL - message_content LONGTEXT, NOT NULL - created_at TIMESTAMP,
+NULL - updated_at TIMESTAMP, NULL
+
+القيم المقترحة لـ sender_type: user assistant
+
+العلاقة: المحادثة الواحدة تحتوي على عدة رسائل.
+
+12) academic_recommendations - التوصيات الأكاديمية
+
+الوظيفة: حفظ النصائح والتوصيات التي يقدمها النظام للطالب.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - student_id BIGINT
+UNSIGNED, FK -> users.id - course_id BIGINT UNSIGNED, FK -> courses.id,
+NULL - recommendation_text LONGTEXT, NOT NULL - reason TEXT, NULL -
+created_at TIMESTAMP, NULL - updated_at TIMESTAMP, NULL
+
+ملاحظة: course_id يكون NULL إذا كانت التوصية عامة وليست مرتبطة بمادة
+محددة.
+
+============================================================ القسم
+الرابع: مشاريع الطلاب والتصويت
+============================================================
+
+13) projects - مشاريع الطلاب
+
+الوظيفة: تخزين مشاريع الطلاب المعروضة داخل المنصة.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - student_id BIGINT
+UNSIGNED, FK -> users.id - title VARCHAR(255), NOT NULL - description
+LONGTEXT, NULL - technologies TEXT, NULL - github_url VARCHAR(500),
+NULL - project_url VARCHAR(500), NULL - course_id BIGINT UNSIGNED, FK ->
+courses.id, NULL - status VARCHAR(30), NOT NULL - created_at TIMESTAMP,
+NULL - updated_at TIMESTAMP, NULL
+
+القيم المقترحة لـ status: pending approved rejected
+
+14) project_votes - التصويت على المشاريع
+
+الوظيفة: تسجيل تصويت المستخدمين على مشاريع الطلاب.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - project_id BIGINT
+UNSIGNED, FK -> projects.id - user_id BIGINT UNSIGNED, FK -> users.id -
+vote_value TINYINT, NOT NULL - created_at TIMESTAMP, NULL - updated_at
+TIMESTAMP, NULL
+
+قيد مقترح: UNIQUE(project_id, user_id) إذا كان لكل مستخدم تصويت واحد على
+المشروع.
+
+============================================================ القسم
+الخامس: الاختبارات والأسئلة
+============================================================
+
+15) quizzes - الاختبارات
+
+الوظيفة: إنشاء اختبارات مرتبطة بمواد دراسية.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - course_id BIGINT
+UNSIGNED, FK -> courses.id - title VARCHAR(255), NOT NULL - description
+TEXT, NULL - total_marks DECIMAL(7,2), NOT NULL - time_limit_minutes
+SMALLINT UNSIGNED, NULL - created_by BIGINT UNSIGNED, FK -> users.id -
+is_active BOOLEAN, DEFAULT TRUE - created_at TIMESTAMP, NULL -
+updated_at TIMESTAMP, NULL
+
+16) quiz_questions - أسئلة الاختبار
+
+الوظيفة: تخزين أسئلة كل اختبار.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - quiz_id BIGINT
+UNSIGNED, FK -> quizzes.id - question_text LONGTEXT, NOT NULL -
+question_type VARCHAR(30), NOT NULL - marks DECIMAL(7,2), NOT NULL -
+order_number INT UNSIGNED, NOT NULL - created_at TIMESTAMP, NULL -
+updated_at TIMESTAMP, NULL
+
+القيم المقترحة لـ question_type: multiple_choice true_false short_answer
+essay
+
+17) question_options - خيارات الأسئلة
+
+الوظيفة: تخزين خيارات أسئلة الاختيار من متعدد وتحديد الخيار الصحيح.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - question_id BIGINT
+UNSIGNED, FK -> quiz_questions.id - option_text TEXT, NOT NULL -
+is_correct BOOLEAN, DEFAULT FALSE - created_at TIMESTAMP, NULL -
+updated_at TIMESTAMP, NULL
+
+ملاحظة: هذا الجدول مناسب أساساً لأسئلة الاختيار من متعدد. الأسئلة
+المقالية والإجابات النصية تحتاج إلى منطق تصحيح منفصل.
+
+18) quiz_attempts - محاولات الاختبارات
+
+الوظيفة: كل سجل يمثل محاولة طالب واحدة لاختبار معين.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - quiz_id BIGINT
+UNSIGNED, FK -> quizzes.id - student_id BIGINT UNSIGNED, FK ->
+users.id - score DECIMAL(7,2), NULL - started_at TIMESTAMP, NOT NULL -
+submitted_at TIMESTAMP, NULL - status VARCHAR(30), NOT NULL - created_at
+TIMESTAMP, NULL - updated_at TIMESTAMP, NULL
+
+القيم المقترحة لـ status: in_progress submitted graded
+
+19) quiz_answers - إجابات الطالب
+
+الوظيفة: تخزين إجابة الطالب عن كل سؤال في محاولة الاختبار.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - attempt_id BIGINT
+UNSIGNED, FK -> quiz_attempts.id - question_id BIGINT UNSIGNED, FK ->
+quiz_questions.id - selected_option_id BIGINT UNSIGNED, FK ->
+question_options.id, NULL - answer_text LONGTEXT, NULL - marks_awarded
+DECIMAL(7,2), NULL - created_at TIMESTAMP, NULL - updated_at TIMESTAMP,
+NULL
+
+قيد مهم: UNIQUE(attempt_id, question_id) لمنع تكرار إجابة السؤال في
+المحاولة نفسها.
+
+============================================================ القسم
+السادس: النقاط والشارات
+============================================================
+
+20) badges - الشارات
+
+الوظيفة: تعريف الشارات والإنجازات التي يستطيع الطالب الحصول عليها.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - name VARCHAR(255),
+NOT NULL - description TEXT, NULL - icon_url VARCHAR(500), NULL -
+required_points INT UNSIGNED, DEFAULT 0 - created_at TIMESTAMP, NULL -
+updated_at TIMESTAMP, NULL
+
+21) user_badges - شارات المستخدمين
+
+الوظيفة: جدول وسيط يربط المستخدمين بالشارات التي حصلوا عليها.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - user_id BIGINT
+UNSIGNED, FK -> users.id - badge_id BIGINT UNSIGNED, FK -> badges.id -
+earned_at TIMESTAMP, NOT NULL - created_at TIMESTAMP, NULL - updated_at
+TIMESTAMP, NULL
+
+قيد مهم: UNIQUE(user_id, badge_id) لمنع منح الشارة نفسها للمستخدم أكثر
+من مرة.
+
+22) user_points - سجل النقاط
+
+الوظيفة: تسجيل كل عملية إضافة أو خصم نقاط للمستخدم. يمكن حساب مجموع نقاط
+المستخدم من مجموع هذا الجدول.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - user_id BIGINT
+UNSIGNED, FK -> users.id - points INT, NOT NULL - reason VARCHAR(255),
+NOT NULL - quiz_attempt_id BIGINT UNSIGNED, FK -> quiz_attempts.id,
+NULL - created_at TIMESTAMP, NULL - updated_at TIMESTAMP, NULL
+
+ملاحظة: يمكن أن تكون points موجبة للإضافة أو سالبة للخصم.
+
+============================================================ القسم
+السابع: الإشعارات والتكاملات
+============================================================
+
+23) notifications - الإشعارات
+
+الوظيفة: تخزين الإشعارات المرسلة للمستخدمين داخل المنصة.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - user_id BIGINT
+UNSIGNED, FK -> users.id - title VARCHAR(255), NOT NULL - message TEXT,
+NOT NULL - type VARCHAR(50), NULL - is_read BOOLEAN, DEFAULT FALSE -
+created_at TIMESTAMP, NULL - updated_at TIMESTAMP, NULL
+
+24) user_integrations - تكاملات الحسابات
+
+الوظيفة: تخزين معلومات ربط حساب المستخدم بخدمات خارجية مثل Microsoft
+Teams.
+
+الحقول: - id BIGINT UNSIGNED, PK, AUTO_INCREMENT - user_id BIGINT
+UNSIGNED, FK -> users.id - provider VARCHAR(100), NOT NULL -
+provider_user_id VARCHAR(255), NULL - connected_at TIMESTAMP, NULL -
+status VARCHAR(50), NOT NULL - created_at TIMESTAMP, NULL - updated_at
+TIMESTAMP, NULL
+
+تنبيه أمني: لا تخزن Access Tokens أو Refresh Tokens كنص عادي. إذا احتجنا
+حفظها، نستخدم تشفيراً مناسباً وآلية آمنة لإدارتها.
+
+============================================================ العلاقات
+بين الجداول - ملخص
+============================================================
+
+-   roles 1 —- * users
+-   specializations 1 —- * users
+-   specializations 1 —- * courses
+-   specializations 1 —- * study_plans
+-   study_plans 1 —- * study_plan_courses
+-   courses 1 —- * study_plan_courses
+-   courses 1 —- * course_prerequisites (كمادة أساسية)
+-   courses 1 —- * course_prerequisites (كمتطلب سابق)
+-   users 1 —- * student_courses
+-   courses 1 —- * student_courses
+-   courses 1 —- * course_materials
+-   users 1 —- * course_materials (uploaded_by)
+-   users 1 —- * ai_conversations
+-   ai_conversations 1 —- * ai_messages
+-   users 1 —- * academic_recommendations
+-   courses 1 —- * academic_recommendations (اختياري)
+-   users 1 —- * projects
+-   courses 1 —- * projects (اختياري)
+-   projects 1 —- * project_votes
+-   users 1 —- * project_votes
+-   courses 1 —- * quizzes
+-   users 1 —- * quizzes (created_by)
+-   quizzes 1 —- * quiz_questions
+-   quiz_questions 1 —- * question_options
+-   quizzes 1 —- * quiz_attempts
+-   users 1 —- * quiz_attempts
+-   quiz_attempts 1 —- * quiz_answers
+-   quiz_questions 1 —- * quiz_answers
+-   question_options 1 —- * quiz_answers (اختياري)
+-   users * —- * badges عبر user_badges
+-   users 1 —- * user_points
+-   quiz_attempts 1 —- * user_points (اختياري)
+-   users 1 —- * notifications
+-   users 1 —- * user_integrations
+
+============================================================ ترتيب إنشاء
+الجداول المقترح في Laravel
+============================================================
+
+أنشئ الجداول حسب اعتماد بعضها على بعض. لا تنشئ جدولاً قبل الجداول التي
+تشير إليها مفاتيحه الخارجية.
+
+المرحلة 1 - موجودة بالفعل: 1. roles 2. specializations 3. users (موجود
+مسبقاً مع role_id وspecialization_id وacademic_year)
+
+المرحلة 2 - المواد والخطط: 4. courses 5. study_plans 6.
+study_plan_courses 7. course_prerequisites 8. student_courses 9.
+course_materials
+
+المرحلة 3 - الذكاء الاصطناعي: 10. ai_conversations 11. ai_messages 12.
+academic_recommendations
+
+المرحلة 4 - المشاريع: 13. projects 14. project_votes
+
+المرحلة 5 - الاختبارات: 15. quizzes 16. quiz_questions 17.
+question_options 18. quiz_attempts 19. quiz_answers
+
+المرحلة 6 - الإنجازات: 20. badges 21. user_badges 22. user_points
+
+المرحلة 7 - خدمات إضافية: 23. notifications 24. user_integrations
+
+============================================================ ملاحظات
+تنفيذية في Laravel
+============================================================
+
+1.  كل جدول جديد ينشأ بملف Migration مستقل.
+2.  استخدم $table->id() لإنشاء المفتاح الأساسي.
+3.  استخدم foreignId()->constrained() للمفاتيح الخارجية عندما يكون اسم
+    العمود واسم الجدول متوافقين مع convention في Laravel.
+4.  استخدم nullable() فقط عندما يسمح التصميم فعلاً بغياب القيمة.
+5.  أضف unique constraints المذكورة أعلاه داخل Migration.
+6.  عند حذف سجل أب، قرر بوضوح هل نستخدم cascadeOnDelete أو
+    restrictOnDelete أو nullOnDelete. لا تضف cascade عشوائياً.
+7.  Laravel timestamps تعني created_at وupdated_at.
+8.  كلمات المرور تحفظ بعد Hash فقط، ولا تحفظ كنص واضح.
+9.  ملفات المواد تحفظ في Laravel Storage، وقاعدة البيانات تحفظ بياناتها
+    ومساراتها والنص المستخرج منها.
+10. لا يعني وجود التصميم أن جميع الجداول أُنشئت. التصميم مرجع لخطة العمل.
+
+نقطة البداية الحالية:
+
+قبل تنفيذ أي Migration جديدة، نفحص migrate:status ونتأكد من الجداول
+الموجودة. ثم نبدأ بجدول courses لأنه أساس الخطط والمواد والاختبارات.

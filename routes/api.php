@@ -4,6 +4,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\AiChatController;
+use App\Http\Controllers\AuthController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -41,3 +43,16 @@ Route::get('/hello', function (Request $request) {
         'windows1252' => @iconv('Windows-1252', 'UTF-8//TRANSLIT//IGNORE', 'Hello'),
     ]);
 });
+
+
+
+
+
+/**D:\projects\laravel\firstlaravelproject\smartadv\app\Http\Controllers\user_cont_auth\login_cont_check.php
+ * 
+ *             USER LOGIN AND REGISTER ROUTES  
+ */
+
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::middleware('auth:sanctum')->post('/users', [AuthController::class, 'store']);
