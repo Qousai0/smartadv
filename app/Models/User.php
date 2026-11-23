@@ -54,7 +54,10 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Specialization::class);
     }
-
+public function studentCourses()
+{
+    return $this->hasMany(StudentCourse::class, 'student_id');
+}
     // /**
     //  * Student Projects Relationship.
     //  */
