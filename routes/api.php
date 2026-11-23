@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\AuthController;
 
+use App\Http\Controllers\CourseController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -56,3 +57,23 @@ Route::get('/hello', function (Request $request) {
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('/users', [AuthController::class, 'store']);
+
+
+
+
+
+Route::post('/courses', [CourseController::class, 'store']);
+
+Route::post('/student-courses', [CourseController::class, 'registerStudentCourse']);
+
+Route::get('/students/{studentId}/courses', [CourseController::class, 'studentCourses']);
+
+
+
+
+
+use App\Http\Controllers\SpecializationController;
+
+Route::post('/specializations', [SpecializationController::class, 'store']);
+
+Route::post('/assign-specialization', [SpecializationController::class, 'assignToStudent']);
